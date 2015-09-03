@@ -19,9 +19,18 @@ datablock AudioProfile(RemmingtonShotgunInsertSound)
 	preload = true;
 };
 
+AddDamageType("Remmington",
+	'<bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_remmington> %1',
+	'%2 <bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_remmington> %1',0.2,1);
+// AddDamageType("RemmingtonHeadshot",
+// 	'<bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_remmington><bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_headshot> %1',
+// 	'%2 <bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_remmington><bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_headshot> %1',0.2,1);
 //muzzle flash effects
 datablock ProjectileData(RemmingtonShotgunProjectile : gunProjectile) {
-	directDamage        = 12.5;
+	directDamageType	= $DamageType::Remmington;
+	radiusDamageType	= $DamageType::Remmington;
+	// headshotDamageType	= $DamageType::RemmingtonHeadshot;
+	directDamage        = 12.5; //Will kill instantly but only if all pellets hit.
 
 	impactImpulse       = 100;
 	verticalImpulse     = 50;
@@ -60,11 +69,11 @@ datablock ItemData(RemmingtonShotgunItem) {
 
 	//gui stuff
 	uiName = "Remmington 870";
-	//iconName = "./icons/icon_Shotgun";
+	iconName = "./shapes/weapons/icons/remmington";
 	doColorShift = false;
 	colorShiftColor = "0.25 0.25 0.25 1.000";
 
-    ammoItem = BulletBuckshotItem;
+	ammoItem = BulletBuckshotItem;
 	reload = true;
 
 	maxmag = 6;
@@ -106,7 +115,7 @@ datablock ShapeBaseImageData(RemmingtonShotgunImage) {
 	ammo = " ";
 	projectile = RemmingtonShotgunProjectile;
 	projectileType = Projectile;
-    projectileCount = 8;
+	projectileCount = 8;
 	customProjectileFire = true;
 
 	casing = gunShellDebris;
@@ -228,6 +237,11 @@ function RemmingtonShotgunImage::onEmptyFire(%this, %obj, %slot) {
 }
 
 function RemmingtonShotgunImage::onReload(%this, %obj, %slot) {
+	%muzzleVector = %obj.getMuzzleVector(0);
+	%cross = vectorCross(%muzzleVector, "0 0 1");
+	%ejectPos = vectorAdd(%obj.getMuzzlePoint(0), vectorScale(%muzzleVector, -1.5));
+	%vector = vectorAdd(vectorScale(%obj.getEyeVector(), -2), "0 0 5");
+	%vector = vectorAdd(%vector, %cross);
 	if ( %obj.remmingtonLoaded ) {
 		%obj.remmingtonLoaded = false;
 
@@ -235,17 +249,16 @@ function RemmingtonShotgunImage::onReload(%this, %obj, %slot) {
 
 		%item = new Item() {
 			dataBlock = %datablock;
-			position = vectorAdd(%obj.getMuzzlePoint(0), vectorScale(%obj.getMuzzleVector(0), -1));
+			position = %ejectPos;
 		};
 
 		%spread = 15;
 		%scalars = getRandomScalar() SPC getRandomScalar() SPC getRandomScalar();
 		%spread = vectorScale(%scalars, mDegToRad(%spread / 2));
-
-		%vector = vectorAdd(vectorScale(%obj.getEyeVector(), -2), "0 0 -5");
 		%matrix = matrixCreateFromEuler(%spread);
 		%vel = matrixMulVector(%matrix, %vector);
 		%item.setVelocity(%vel);
+
 		%position = getWords(%item.getTransform(), 0, 2);
 		%item.setTransform(%position SPC eulerToAxis("0 0" SPC getRandom() * 360 - 180));
 
@@ -258,38 +271,37 @@ function RemmingtonShotgunImage::onReload(%this, %obj, %slot) {
 		%item.schedule(14000, fadeOut);
 		%item.schedule(15000, delete);
 	}
-    else if ( %obj.remmingtonShell ) {
-        //Eject the shell after every shot
-    	%datablock = ShellBuckshotItem;
+	else if ( %obj.remmingtonShell ) {
+		//Eject the shell after every shot
+		%datablock = ShellBuckshotItem;
 
-    	%item = new Item() {
-    		dataBlock = %datablock;
-    		position = vectorAdd(%obj.getMuzzlePoint(0), vectorScale(%obj.getMuzzleVector(0), -2));
-    	};
+		%item = new Item() {
+			dataBlock = %datablock;
+			position = %ejectPos;
+		};
 
-    	%spread = 15;
-    	%scalars = getRandomScalar() SPC getRandomScalar() SPC getRandomScalar();
-    	%spread = vectorScale(%scalars, mDegToRad(%spread / 2));
+		%spread = 15;
+		%scalars = getRandomScalar() SPC getRandomScalar() SPC getRandomScalar();
+		%spread = vectorScale(%scalars, mDegToRad(%spread / 2));
+		%matrix = matrixCreateFromEuler(%spread);
+		%vel = matrixMulVector(%matrix, %vector);
+		%item.setVelocity(%vel);
 
-    	%vector = vectorAdd(vectorScale(%obj.getEyeVector(), -2), "0 0 5");
-    	%matrix = matrixCreateFromEuler(%spread);
-    	%vel = matrixMulVector(%matrix, %vector);
-    	%item.setVelocity(%vel);
-    	%position = getWords(%item.getTransform(), 0, 2);
-    	%item.setTransform(%position SPC eulerToAxis("0 0" SPC getRandom() * 360 - 180));
+		%position = getWords(%item.getTransform(), 0, 2);
+		%item.setTransform(%position SPC eulerToAxis("0 0" SPC getRandom() * 360 - 180));
 
-    	if (!isObject(BulletGroup)) {
-    		MissionCleanup.add(new SimGroup(BulletGroup));
-    	}
+		if (!isObject(BulletGroup)) {
+			MissionCleanup.add(new SimGroup(BulletGroup));
+		}
 
-    	BulletGroup.add(%item);
-    	%item.canPickup = false;
+		BulletGroup.add(%item);
+		%item.canPickup = false;
 
-    	%item.schedule(14000, fadeOut);
-    	%item.schedule(15000, delete);
+		%item.schedule(14000, fadeOut);
+		%item.schedule(15000, delete);
 
-        %obj.remmingtonShell = false;
-    }
+		%obj.remmingtonShell = false;
+	}
 
 	if ( %obj.currRemmingtonHold > 0 ) {
 		%obj.currRemmingtonHold--;
@@ -313,7 +325,7 @@ function RemmingtonShotgunImage::onFire(%this, %obj, %slot) {
 
 	%obj.playThread(2, shiftForward);
 
-    %obj.remmingtonShell = true;
+	%obj.remmingtonShell = true;
 	%obj.remmingtonLoaded = false;
 
 	serverPlay3d(RemmingtonShotgunFireSound, %obj.getHackPosition());
@@ -348,24 +360,24 @@ package RemmingtonShotgunPackage {
 				%state = %obj.getImageState(0);
 
 				if ( %state $= "Ready" || %state $= "Empty" ) {
-                    %pool = %obj.bullets["buckshot"];
+					%pool = %obj.bullets["buckshot"];
 
-                    if ( %obj.currRemmingtonHold >= RemmingtonShotgunItem.maxmag || %pool <= 0 )
-                        return;
+					if ( %obj.currRemmingtonHold >= RemmingtonShotgunItem.maxmag || %pool <= 0 )
+						return;
 
-                    %now = getSimTime();
-                    if ( %now - %obj.lastRemmingtonReload <= 200 )
-                        return;
+					%now = getSimTime();
+					if ( %now - %obj.lastRemmingtonReload <= 200 )
+						return;
 
-                    %obj.lastRemmingtonReload = %now;
+					%obj.lastRemmingtonReload = %now;
 
-                    %obj.currRemmingtonHold += 1;
-                    %obj.bullets["buckshot"] -= 1;
+					%obj.currRemmingtonHold += 1;
+					%obj.bullets["buckshot"] -= 1;
 
-                    serverPlay3d(RemmingtonShotgunInsertSound, %obj.getHackPosition());
-                    %obj.playThread(0, shiftLeft);
+					serverPlay3d(RemmingtonShotgunInsertSound, %obj.getHackPosition());
+					%obj.playThread(0, shiftLeft);
 
-                    BulletBuckshotItem.UpdateAmmoPrint(%obj, 0, 3);
+					BulletBuckshotItem.UpdateAmmoPrint(%obj, 0, 3);
 				}
 				return;
 			}
@@ -396,11 +408,11 @@ package RemmingtonShotgunPackage {
 			if ( nameToID(RemmingtonShotgunItem) == %item ) {
 				%bullets = %player.currRemmingtonHold;
 				%loaded = %player.remmingtonLoaded;
-                %shell = %player.remmingtonShell;
+				%shell = %player.remmingtonShell;
 
 				%player.currRemmingtonHold = 0;
 				%player.remmingtonLoaded = false;
-                %player.remmingtonShell = false;
+				%player.remmingtonShell = false;
 
 				$RemmingtonDropInfo = %bullets SPC %loaded SPC %shell;
 			}
@@ -415,7 +427,7 @@ package RemmingtonShotgunPackage {
 		if ( %this == nameToID(RemmingtonShotgunItem) && $RemmingtonDropInfo !$= "" ) {
 			%obj.currRemmingtonHold = getWord($RemmingtonDropInfo, 0);
 			%obj.remmingtonLoaded = getWord($RemmingtonDropInfo, 1);
-            %obj.remmingtonShell = getWord($RemmingtonDropInfo, 2);
+			%obj.remmingtonShell = getWord($RemmingtonDropInfo, 2);
 
 			$RemmingtonDropInfo = "";
 		}
@@ -430,12 +442,12 @@ package RemmingtonShotgunPackage {
 			if ( %item.remmingtonLoaded !$= "" ) {
 				%player.remmingtonLoaded = %item.remmingtonLoaded;
 				%player.currRemmingtonHold = %item.currRemmingtonHold;
-                %player.remmingtonShell = %item.remmingtonShell;
+				%player.remmingtonShell = %item.remmingtonShell;
 			}
 			else {
 				%player.remmingtonLoaded = false;
 				%player.currRemmingtonHold = 0;
-                %player.remmingtonShell = false;
+				%player.remmingtonShell = false;
 			}
 
 			if ( isObject(%item.spawnBrick) ) {
