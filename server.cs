@@ -12,7 +12,7 @@ if(%error == $Error::AddOn_Disabled)
 if(%error == $Error::AddOn_NotFound)
 {
 	//we don't have the gun, so we're screwed
-	error("ERROR: Weapon_Revolver - required add-on Weapon_Gun not found");
+	error("ERROR: Weapon_Package_ComplexFirearms - required add-on Weapon_Gun not found");
 }
 else
 {
@@ -27,6 +27,7 @@ else
 	exec("./Weapon_M1Garand.cs");
 	exec("./Weapon_Thompson.cs");
 	exec("./Weapon_Remmington.cs");
+	exec("./Weapon_HEGrenade.cs");
 }
 
 function serverCmdReload(%c) {
@@ -83,4 +84,25 @@ function axisToEuler(%axis)
 	%m23 = 2.0 * (%q2q3 + %q0q1);
 	%m33 = 2.0 * %q0q0 - 1.0 + 2.0 * %q3q3;
 	return mRadToDeg(mAsin(%m23)) SPC mRadToDeg(mAtan(-%m13, %m33)) SPC mRadToDeg(mAtan(-%m21, %m22));
+}
+
+//ObstructRadiusDamage check -- all credit to Port for this one
+function obstructRadiusDamageCheck(%pos, %col) {
+	%b = %col.getHackPosition();
+	%half = vectorSub(%b, %col.position);
+
+	%a = vectorAdd(%col.position, vectorScale(%half, 0.1));
+	%c = vectorAdd(%col.position, vectorScale(%half, 1.9));
+
+	%mask = $TypeMasks::FxBrickObjectType;
+
+	if (containerRayCast(%pos, %a, %mask) !$= 0) {
+		if (containerRayCast(%pos, %b, %mask) !$= 0) {
+			if (containerRayCast(%pos, %c, %mask) !$= 0) {
+				return 0;
+			}
+		}
+	}
+
+	return 1;
 }

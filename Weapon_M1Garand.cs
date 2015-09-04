@@ -597,9 +597,8 @@ package garandRiflePackage {
 				$garandMagDropInfo = %player.mag[%slot];
 				%player.mag[%slot] = "";
 			}
-
-			parent::serverCmdDropTool(%client, %slot);
 		}
+		parent::serverCmdDropTool(%client, %slot);
 	}
 
 	function ItemData::onAdd(%this, %obj) {

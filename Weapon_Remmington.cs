@@ -416,9 +416,8 @@ package RemmingtonShotgunPackage {
 
 				$RemmingtonDropInfo = %bullets SPC %loaded SPC %shell;
 			}
-
-			parent::serverCmdDropTool(%client, %slot);
 		}
+		parent::serverCmdDropTool(%client, %slot);
 	}
 
 	function ItemData::onAdd(%this, %obj) {
