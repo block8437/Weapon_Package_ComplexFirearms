@@ -128,7 +128,7 @@ package CustomProjectileFire
 			%velocity = %data.muzzleVelocity * getWord(%obj.getScale(), 2);
 			%velocity = vectorScale(%vector, %velocity);
 			%className = %this.projectileType;
-			%velocity = vectorAdd(%velocity, vectorScale(%inheritFactor, %playerVelocity));
+			%velocity = vectorAdd(%velocity, vectorScale(%playerVelocity, %inheritFactor));
 
 			%projectile = new (%className)()
 			{

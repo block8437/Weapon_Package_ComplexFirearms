@@ -30,7 +30,7 @@ datablock ProjectileData(RemmingtonShotgunProjectile : gunProjectile) {
 	directDamageType	= $DamageType::Remmington;
 	radiusDamageType	= $DamageType::Remmington;
 	// headshotDamageType	= $DamageType::RemmingtonHeadshot;
-	directDamage        = 12.5; //Will kill instantly but only if all pellets hit.
+	directDamage        = 10;
 
 	impactImpulse       = 100;
 	verticalImpulse     = 50;
@@ -312,7 +312,7 @@ function RemmingtonShotgunImage::onReload(%this, %obj, %slot) {
 }
 
 function RemmingtonShotgunImage::getProjectileSpread(%this, %obj, %slot) {
-	%spread = 7;
+	%spread = 15;
 	return %spread; // + vectorLen(%obj.getVelocity()) * 0.25;
 }
 

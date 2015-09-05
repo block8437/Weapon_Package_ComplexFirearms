@@ -5,6 +5,13 @@ datablock AudioProfile(HEGrenadePinOutSound)
 	preload = true;
 };
 
+datablock AudioProfile(HEGrenadeBounceSound)
+{
+	filename    = "./Sounds/grenadeBounce.wav";
+	description = AudioClose3d;
+	preload = true;
+};
+
 datablock ParticleData(HEGrenadeExplosionParticle)
 {
 	dragCoefficient		= 1.0;
@@ -94,13 +101,13 @@ datablock ExplosionData(HEGrenadeExplosion) {
 };
 
 datablock ProjectileData(HEGrenadeProjectile) {
-	projectileShapeName = "./shapes/weapons/grenade.dts";
+	projectileShapeName = "./shapes/weapons/grenade_projectile.dts";
 	directDamage        = 0;
 	directDamageType = $DamageType::RocketDirect;
 	radiusDamageType = $DamageType::RocketRadius;
 	impactImpulse	   = 200;
 	verticalImpulse	   = 200;
-	explosion           = HEGrenadeExplosion;
+	explosion           = "";//HEGrenadeExplosion;
 	particleEmitter     = "";
 	sound				= "";
 
@@ -110,23 +117,48 @@ datablock ProjectileData(HEGrenadeProjectile) {
 	brickExplosionMaxVolume = 100;
 	brickExplosionMaxVolumeFloating = 60;
 
-	muzzleVelocity      = 35;
-	velInheritFactor    = 1;
-	explodeOnDeath = true;
+	muzzleVelocity      = 20;
+	velInheritFactor    = 0.5;
+	explodeOnDeath		= true;
 
-	armingDelay         = 3000; 
-	lifetime            = 3000;
-	fadeDelay           = 3000;
+	armingDelay         = 5000; 
+	lifetime            = 5000;
+	fadeDelay           = 5000;
 	bounceElasticity    = 0.4;
 	bounceFriction      = 0.3;
 	isBallistic         = true;
 	gravityMod = 1;
 
-	hasLight    = true;
+	hasLight    = false;
 	lightRadius = 1.0;
 	lightColor  = "1 0 0";
 
 	uiName = "HE Grenade Projectile";
+};
+function HEGrenadeProjectile::onCollision(%this,%obj,%col,%fade,%pos,%normal)
+{
+	serverPlay3D(HEGrenadeBounceSound,%obj.getTransform());
+	parent::onCollision(%this,%obj,%col,%fade,%pos,%normalF);
+}
+
+datablock ProjectileData(HEExplosionProjectile) {
+	directDamageType	= $DamageType::RocketDirect;
+	radiusDamageType	= $DamageType::RocketRadius;
+	explosion 			= HEGrenadeExplosion;
+	particleEmitter     = "";
+	sound				= "";
+
+	brickExplosionRadius = 10;
+	brickExplosionImpact = false;
+	brickExplosionForce  = 25;
+	brickExplosionMaxVolume = 100;
+	brickExplosionMaxVolumeFloating = 60;
+	velInheritFactor    = 1;
+	explodeOnDeath		= true;
+
+	armingDelay         = 0; 
+	lifetime            = 0;
+	fadeDelay           = 0;
 };
 
 //////////
@@ -152,31 +184,9 @@ datablock ItemData(HEGrenadeItem) {
 
 	image = HEGrenadeImage;
 	canDrop = true;
+
+	grenadeLifeTime = 5000;
 };
-
-function HEGrenadeItem::onAdd(%this, %obj) {
-	parent::onAdd(%this, %obj);
-
-	if ( $HEGrenadeDropInfo !$= "" ) {
-		%obj.hideNode("ring");
-		%obj.explosionTimer = $HEGrenadeDropInfo;
-		%obj.schedule(%obj.explosionTimer, BlowUp);
-
-		$HEGrenadeDropInfo = "";
-	}
-}
-
-function HEGrenadeItem::BlowUp(%data, %obj) {
-	%projectile = new projectile() {
-		dataBlock = HEGrenadeProjectile;
-		initialPosition = %obj.getPosition();
-		initialVelocity = %obj.getVelocity();
-		sourceObject = %obj;
-	};
-	MissionCleanup.add(%projectile);
-	%projectile.explode();
-	%obj.delete();
-}
 
 datablock ShapeBaseImageData(HEGrenadeImage) {
 	// Basic Item properties
@@ -250,14 +260,11 @@ datablock ShapeBaseImageData(HEGrenadeImage) {
 	stateScript[6]					= "onFire";
 	stateWaitForTimeout[6]			= true;
 	stateAllowImageChange[6]		= false;
-
-
-	grenadeLifeTime = 3000;
 };
 
 function HEGrenadeImage::onCharge(%this, %obj, %slot) {
 	%obj.playthread(2, "spearReady");
-	%obj.setImageLoaded(0, 1);
+	//%obj.setImageLoaded(0, 1);
 }
 
 function HEGrenadeImage::onAbortCharge(%this, %obj, %slot) {
@@ -267,10 +274,13 @@ function HEGrenadeImage::onAbortCharge(%this, %obj, %slot) {
 function HEGrenadeImage::onFire(%this, %obj, %slot) {
 	%obj.playthread(2, "spearThrow");
 	// Parent::OnFire(%this, %obj, %slot);
-
-	%obj.tool[%obj.currTool] = 0;
+	%currslot = %obj.currTool;
+	if(%obj.liveGrenadeSlot !$= "") {
+		%currslot = %obj.liveGrenadeSlot;
+	}
+	%obj.tool[%currslot] = 0;
 	%obj.weaponCount--;
-	messageClient(%obj.client,'MsgItemPickup','',%obj.currTool,0);
+	messageClient(%obj.client,'MsgItemPickup','',%currslot,0);
 	%obj.setImageLoaded(0, 1);
 	if(!isEventPending(%obj.HEGrenadeSchedule)) {
 		%noboom = true;
@@ -279,7 +289,8 @@ function HEGrenadeImage::onFire(%this, %obj, %slot) {
 
 	%vector = %obj.getEyeVector();
 	%velocity = vectorScale(%vector, HEGrenadeProjectile.muzzleVelocity);
-	%velocity = vectorAdd(%velocity, vectorScale(HEGrenadeProjectile.velInheritFactor, %obj.getVelocity()));
+	%inherit = vectorScale(%obj.getVelocity(), HEGrenadeProjectile.velInheritFactor);
+	%velocity = vectorAdd(%velocity, %inherit);
 	%projectile = new projectile()
 	{
 		datablock = HEGrenadeProjectile;
@@ -297,17 +308,36 @@ function HEGrenadeImage::onFire(%this, %obj, %slot) {
 		%projectile.noExplode = true;
 	}
 	else {
-		%delay = 3 - ($Sim::Time - %obj.HEGrenadeStarted);
-		talk(%delay);
-		%projectile.schedule(mClamp(%delay, 0, 3) * 1000, explode);
+		%delay = (%this.item.grenadeLifeTime/1000) - ($Sim::Time - %obj.HEGrenadeStarted);
+		%projectile.schedule(mClamp(%delay * 1000, 0, %this.item.grenadeLifeTime), explode);
 	}
 	%obj.HEGrenadeStarted = "";
+	%obj.liveGrenadeSlot = "";
 	serverCmdUnUseTool(%obj.client);
 }
 
-function HEGrenadeProjectile::Explode(%this, %obj) {
-	talk("This is a thing");
-	parent::Explode(%this, %obj);
+function HEGrenadeProjectile::onExplode(%this, %obj) {
+	if(%obj.noExplode) {
+		%item = new item() {
+			dataBlock = HEGrenadeItem;
+			sourceObject = %obj;
+			client = %obj.client;
+		};
+		%item.setTransform(%obj.getTransform());
+		%item.setVelocity(%obj.getVelocity());
+		%item.schedule(14000, fadeOut);
+		%item.schedule(15000, delete);
+		return;
+	}
+	%projectile = new projectile() {
+		dataBlock = HEExplosionProjectile;
+		initialPosition = %obj.getPosition();
+		initialVelocity = %obj.getVelocity();
+		sourceObject = %obj;
+	};
+	MissionCleanup.add(%projectile);
+	%projectile.explode();
+	// %obj.delete();
 }
 
 function Player::HEGrenadeBlowUp(%obj) {
@@ -320,7 +350,7 @@ function Player::HEGrenadeBlowUp(%obj) {
 	%obj.setImageLoaded(0, 1);
 	serverCmdUnUseTool(%obj.client);
 	%projectile = new projectile() {
-		dataBlock = HEGrenadeProjectile;
+		dataBlock = HEExplosionProjectile;
 		initialPosition = %obj.getHackPosition();
 		initialVelocity = %obj.getVelocity();
 		sourceObject = %obj;
@@ -330,35 +360,82 @@ function Player::HEGrenadeBlowUp(%obj) {
 	%projectile.explode();
 }
 
+function HEGrenadeBlowUp(%obj) {
+	if(isObject(%obj) && %obj.GetType() & $TypeMasks::ItemObjectType) {
+		%projectile = new projectile() {
+			dataBlock = HEExplosionProjectile;
+			initialPosition = %obj.getPosition();
+			initialVelocity = %obj.getVelocity();
+			sourceObject = %obj;
+		};
+		MissionCleanup.add(%projectile);
+		%projectile.explode();
+		%obj.delete();
+	}
+}
+
 package HEGrenadePackage {
 	function Armor::onTrigger(%this, %obj, %slot, %val)
 	{
 		%image = %obj.getMountedImage(0);
 		if(%image == nameToID(HEGrenadeImage) && %slot $= 4 && %val) {
-			talk(%obj.getImageState(0));
 			if(%obj.getImageState(0) $= "Ready") {
 				%obj.playThread(2, "shiftRight");
 				%obj.playAudio(2,HEGrenadePinOutSound);
 				%obj.setImageLoaded(0, 0); //Shit's live, throw it or die!
 				%obj.HEGrenadeStarted = $Sim::Time;
-				%obj.HEGrenadeSchedule = %obj.schedule(%image.grenadeLifeTime, HEGrenadeBlowUp);
+				%obj.liveGrenadeSlot = %obj.currTool;
+				%obj.HEGrenadeSchedule = %obj.schedule(%image.item.grenadeLifeTime, HEGrenadeBlowUp);
 			}
 		}
 		Parent::onTrigger(%this, %obj, %slot, %val);
 	}
 
 	function serverCmdDropTool(%client, %slot) {
-		if ( isObject(%player = %client.player) ) {
-			%item = %player.tool[%slot];
+		if ( isObject(%obj = %client.player) ) {
+			if(%obj.getMountedImage(0) == nameToID(HEGrenadeImage) && %obj.getImageLoaded(0) == 0) {
+				%slot = %obj.liveGrenadeSlot;
+			}
+			%item = %obj.tool[%slot];
 
-			if ( nameToID(HEGrenadeItem) == %item ) {
-				$HEGrenadeDropInfo = %player.explosionTimer[%slot];
-				%player.explosionTimer[%slot] = "";
-				%player.setImageLoaded(0, 1);
-				cancel(%player.HEGrenadeSchedule);
+			if ( nameToID(HEGrenadeItem) == %item && %obj.HEGrenadeStarted !$= "") {
+				$HEGrenadeDropInfo = %obj.HEGrenadeStarted;
+				%obj.HEGrenadeStarted = "";
+				%obj.liveGrenadeSlot = "";
+				%obj.setImageLoaded(0, 1);
+				cancel(%obj.HEGrenadeSchedule);
 			}
 		}
 		parent::serverCmdDropTool(%client, %slot);
+	}
+
+	function Player::pickUp(%obj, %item) {
+		%db = %item.getDatablock();
+		%client = %obj.client;
+		if ( nameToID(HEGrenadeItem) == %db && %item.canPickup && %item.lastActivated !$= "") {
+			%newslot = %obj.addItem(HEGrenadeItem.getID());
+			%obj.HEGrenadeStarted = %item.lastActivated;
+			%obj.liveGrenadeSlot = %newslot;
+			serverCmdUseTool(%client, %newslot);
+			%obj.HEGrenadeSchedule = %obj.schedule(mClamp(((%db.grenadeLifeTime/1000) - ($Sim::Time - %obj.HEGrenadeStarted)) * 1000, 0, %db.grenadeLifeTime), HEGrenadeBlowUp);
+			%obj.setImageLoaded(0, 0);
+			%item.delete();
+		}
+		else {
+			return parent::pickUp(%obj, %item);
+		}
+	}
+
+	function ItemData::onAdd(%this, %obj) {
+		parent::onAdd(%this, %obj);
+		
+		if ( %this == nameToID(HEGrenadeItem) && $HEGrenadeDropInfo !$= "" ) {
+			%obj.hideNode("ring");
+			%obj.lastActivated = $HEGrenadeDropInfo;
+			schedule(mClamp(((%this.grenadeLifeTime/1000) - ($Sim::Time - $HEGrenadeDropInfo)) * 1000, 0, %this.grenadeLifeTime), 0, HEGrenadeBlowUp, %obj);
+
+			$HEGrenadeDropInfo = "";
+		}
 	}
 
 	function serverCmdUseTool(%client, %slot) {
