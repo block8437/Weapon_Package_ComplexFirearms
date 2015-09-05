@@ -12,12 +12,51 @@ datablock AudioProfile(HEGrenadeBounceSound)
 	preload = true;
 };
 
+datablock AudioProfile(HEGrenadePinBounceSound)
+{
+	filename    = "./Sounds/ring.wav";
+	description = AudioClosest3d;
+	preload = true;
+};
+
 datablock AudioProfile(HEGrenadeClickSound)
 {
 	filename = "base/data/sound/clickSuperMove.wav";
 	description = AudioClosest3d;
 	preload = true;
 };
+
+datablock ItemData(HEGrenadePinItem) {
+	shapeFile = "./shapes/weapons/grenade_pin.dts";
+	rotate = false;
+	mass = 0.5;
+	density = 0.1;
+	elasticity = 0.4;
+	friction = 0.2;
+	emap = true;
+
+	uiName = "";
+	canPickUp = false;
+};
+function Item::monitorPinVelocity(%this, %before) {
+	cancel(%this.monitorPinVelocity);
+
+	%now = vectorLen(%this.getVelocity());
+	%delta = %before - %now;
+
+	if ( %delta >= 2 ) {
+		%sound = HEGrenadePinBounceSound;
+		serverPlay3D(%sound, %this.getPosition());
+	}
+
+	%this.monitorPinVelocity = %this.schedule(50, monitorPinVelocity, %now);
+}
+
+function HEGrenadePinItem::onAdd(%this, %obj) {
+	parent::onAdd(%this, %obj);
+	%obj.canPickUp = false;
+	%obj.monitorPinVelocity();
+}
 
 datablock ParticleData(HEGrenadeExplosionParticle)
 {
@@ -213,7 +252,8 @@ datablock ShapeBaseImageData(HEGrenadeImage) {
 	melee = false;
 	armReady = true;
 
-	//casing = " ";
+	casing				= "";
+
 	doColorShift = false;
 	colorShiftColor = "0.400 0.196 0 1.000";
 
@@ -237,7 +277,7 @@ datablock ShapeBaseImageData(HEGrenadeImage) {
 
 	stateName[3]					= "Charge";
 	stateTransitionOnTimeout[3]		= "Armed";
-	stateTimeoutValue[3]			= 0.6;
+	stateTimeoutValue[3]			= 0.45;
 	stateWaitForTimeout[3]			= false;
 	stateTransitionOnTriggerUp[3]	= "AbortCharge";
 	stateScript[3]					= "onCharge";
@@ -337,6 +377,7 @@ function HEGrenadeProjectile::MakeItem(%this, %obj) {
 		sourceObject = %obj;
 		client = %obj.client;
 		lastActivated = %obj.lastActivated;
+		miniGame = %obj.client.miniGame;
 	};
 	%item.setTransform(%obj.getTransform());
 	%item.setVelocity(%obj.getVelocity());
@@ -411,9 +452,30 @@ package HEGrenadePackage {
 					%obj.playThread(2, "shiftRight");
 					%obj.playAudio(2,HEGrenadePinOutSound);
 					%obj.setImageLoaded(0, 0); //IT BEGINS.
+
+					%velocity = vectorAdd(vectorScale(%obj.getMuzzleVector(0), 2), "0 0 5");
+					%velocity = vectorAdd(%velocity, %obj.getVelocity());
+					%item = new Item() {
+						dataBlock = HEGrenadePinItem;
+						position = %obj.getMuzzlePoint(0);
+					};
+
+					%spread = 15;
+					%scalars = getRandomScalar() SPC getRandomScalar() SPC getRandomScalar();
+					%spread = vectorScale(%scalars, mDegToRad(%spread / 2));
+					%matrix = matrixCreateFromEuler(%spread);
+					%vel = matrixMulVector(%matrix, %velocity);
+					%item.setVelocity(%vel);
+
+					%position = getWords(%item.getTransform(), 0, 2);
+					%item.setTransform(%position SPC eulerToAxis("0 0" SPC getRandom() * 360 - 180));
+
+					MissionCleanup.add(%item);
+					%item.schedule(4000, fadeOut);
+					%item.schedule(5000, delete);
 				}
 			}
-			else if(%obj.getImageLoaded(0) == 0) {
+			else if(%obj.getImageLoaded(0) == 0 && %obj.HEGrenadeStarted $= "") {
 				%obj.playThread(3, "shiftLeft");
 				%obj.playAudio(2, HEGrenadeClickSound);
 				%obj.HEGrenadeStarted = $Sim::Time;
