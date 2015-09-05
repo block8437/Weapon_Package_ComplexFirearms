@@ -60,7 +60,7 @@ datablock ProjectileData(thompsonRifleProjectile : gunProjectile) {
 	gravityMod = 0.0;
 
 	particleEmitter     = advSmallBulletTrailEmitter; //bulletTrailEmitter;
-	headshotMultiplier = 2;
+	headshotMultiplier = 1.5;
 };
 
 //////////
@@ -97,6 +97,8 @@ datablock ItemData(thompsonRifleItem) {
 	 // Dynamic properties defined by the scripts
 	image = thompsonRifleImage;
 	canDrop = true;
+
+	clickPickUp = true;
 };
 
 function thompsonRifleItem::onAdd(%this, %obj) {

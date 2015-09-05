@@ -30,7 +30,7 @@ datablock ProjectileData(RemmingtonShotgunProjectile : gunProjectile) {
 	directDamageType	= $DamageType::Remmington;
 	radiusDamageType	= $DamageType::Remmington;
 	// headshotDamageType	= $DamageType::RemmingtonHeadshot;
-	directDamage        = 10;
+	directDamage        = 9;
 
 	impactImpulse       = 100;
 	verticalImpulse     = 50;
@@ -83,6 +83,8 @@ datablock ItemData(RemmingtonShotgunItem) {
 	 // Dynamic properties defined by the scripts
 	image = RemmingtonShotgunImage;
 	canDrop = true;
+
+	clickPickUp = true;
 };
 
 ////////////////
@@ -312,7 +314,7 @@ function RemmingtonShotgunImage::onReload(%this, %obj, %slot) {
 }
 
 function RemmingtonShotgunImage::getProjectileSpread(%this, %obj, %slot) {
-	%spread = 15;
+	%spread = 11;
 	return %spread; // + vectorLen(%obj.getVelocity()) * 0.25;
 }
 

@@ -85,24 +85,3 @@ function axisToEuler(%axis)
 	%m33 = 2.0 * %q0q0 - 1.0 + 2.0 * %q3q3;
 	return mRadToDeg(mAsin(%m23)) SPC mRadToDeg(mAtan(-%m13, %m33)) SPC mRadToDeg(mAtan(-%m21, %m22));
 }
-
-//ObstructRadiusDamage check -- all credit to Port for this one
-function obstructRadiusDamageCheck(%pos, %col) {
-	%b = %col.getHackPosition();
-	%half = vectorSub(%b, %col.position);
-
-	%a = vectorAdd(%col.position, vectorScale(%half, 0.1));
-	%c = vectorAdd(%col.position, vectorScale(%half, 1.9));
-
-	%mask = $TypeMasks::FxBrickObjectType;
-
-	if (containerRayCast(%pos, %a, %mask) !$= 0) {
-		if (containerRayCast(%pos, %b, %mask) !$= 0) {
-			if (containerRayCast(%pos, %c, %mask) !$= 0) {
-				return 0;
-			}
-		}
-	}
-
-	return 1;
-}

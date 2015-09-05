@@ -6,28 +6,31 @@ package ComplexFirearmsPackage {
 			return;
 		}
 
-		if ( isObject(%clip = %this.getMountedImage(1)) && %clip.isMag ) {
-			if ( %this.bullets[%clip.ammoType] > 0 && %this.holdingPistolMagazine < %clip.maxClip ) {
-				%this.holdingPistolMagazine += 1;
-				%this.bullets[%clip.ammoType] -= 1;
-			}
-
-			%clip.ammoItem.UpdateAmmoPrint(%this, "", 3, 1);
-			%this.pistolLoaded = false;
-			%this.setImageAmmo(0, 1);
-			return;
-		}
-
 		Parent::activateStuff(%this);
 
 		%start = %this.getEyePoint();
 		%end = vectorAdd(%start, vectorScale(%this.getEyeVector(), 6));
 
-		%mask = $TypeMasks::All | (~$TypeMasks::FxBrickAlwaysObjectType); //excludes FxBrickAlwaysObjectType from TypeMasks
+		%mask = $TypeMasks::All ^ $TypeMasks::FxBrickAlwaysObjectType; //excludes FxBrickAlwaysObjectType from TypeMasks
 		%ray = containerRayCast(%start, %end, %mask, %this);
 
-		if ( !%ray ) return;
-
+		if ( !%ray ) {
+			return;
+		}
+		%col = getWord(%ray,0);
+		if(isObject(%col) && (%col.getType() & $TypeMasks::ItemObjectType)) {
+			if(%col.getDataBlock().clickPickUp && %col.canPickUp && %this.findItem(%col.getDataBlock()) <= -1) {
+				%slot = %this.addItem(%col.getDataBlock().getID());
+				if ( isObject(%col.spawnBrick) ) {
+					%col.fadeOut();
+					%col.schedule(%col.spawnBrick.itemRespawnTime, fadeIn);
+				}
+				else {
+					%col.delete();
+				}
+				return;
+			}
+		}
 		%pos = getWords(%ray, 1, 3);
 		initContainerRadiusSearch(
 			%pos, 0.2,

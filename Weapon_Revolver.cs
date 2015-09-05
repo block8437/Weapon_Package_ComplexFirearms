@@ -67,7 +67,7 @@ AddDamageType("SnWRevolverHeadshot",
 //muzzle flash effects
 datablock ProjectileData(revolverProjectile : gunProjectile)
 {
-	directDamage        = 20;//8;
+	directDamage        = 25;//8;
 
 	directDamageType	= $DamageType::SnWRevolver;
 	radiusDamageType	= $DamageType::SnWRevolver;
@@ -127,6 +127,8 @@ datablock ItemData(revolverItem)
 	 // Dynamic properties defined by the scripts
 	image = revolverImage;
 	canDrop = true;
+
+	clickPickUp = true;
 };
 
 ////////////////

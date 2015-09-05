@@ -12,6 +12,13 @@ datablock AudioProfile(HEGrenadeBounceSound)
 	preload = true;
 };
 
+datablock AudioProfile(HEGrenadeClickSound)
+{
+	filename = "base/data/sound/clickSuperMove.wav";
+	description = AudioClosest3d;
+	preload = true;
+};
+
 datablock ParticleData(HEGrenadeExplosionParticle)
 {
 	dragCoefficient		= 1.0;
@@ -135,11 +142,6 @@ datablock ProjectileData(HEGrenadeProjectile) {
 
 	uiName = "HE Grenade Projectile";
 };
-function HEGrenadeProjectile::onCollision(%this,%obj,%col,%fade,%pos,%normal)
-{
-	serverPlay3D(HEGrenadeBounceSound,%obj.getTransform());
-	parent::onCollision(%this,%obj,%col,%fade,%pos,%normalF);
-}
 
 datablock ProjectileData(HEExplosionProjectile) {
 	directDamageType	= $DamageType::RocketDirect;
@@ -235,7 +237,7 @@ datablock ShapeBaseImageData(HEGrenadeImage) {
 
 	stateName[3]					= "Charge";
 	stateTransitionOnTimeout[3]		= "Armed";
-	stateTimeoutValue[3]			= 0.7;
+	stateTimeoutValue[3]			= 0.6;
 	stateWaitForTimeout[3]			= false;
 	stateTransitionOnTriggerUp[3]	= "AbortCharge";
 	stateScript[3]					= "onCharge";
@@ -309,24 +311,47 @@ function HEGrenadeImage::onFire(%this, %obj, %slot) {
 	}
 	else {
 		%delay = (%this.item.grenadeLifeTime/1000) - ($Sim::Time - %obj.HEGrenadeStarted);
+		%projectile.lastActivated = %obj.HEGrenadeStarted;
 		%projectile.schedule(mClamp(%delay * 1000, 0, %this.item.grenadeLifeTime), explode);
 	}
 	%obj.HEGrenadeStarted = "";
 	%obj.liveGrenadeSlot = "";
+	%obj.liveGrenadeClient = "";
 	serverCmdUnUseTool(%obj.client);
+}
+
+function HEGrenadeProjectile::onCollision(%this,%obj,%col,%fade,%pos,%normal)
+{
+	%obj.bounces += 1;
+	serverPlay3D(HEGrenadeBounceSound,%obj.getTransform());
+	parent::onCollision(%this,%obj,%col,%fade,%pos,%normal);
+	if(%obj.bounces >= 5 || VectorLen(%obj.getVelocity()) <= 3) {
+		%this.MakeItem(%obj);
+		%obj.delete();
+	}
+}
+
+function HEGrenadeProjectile::MakeItem(%this, %obj) {
+	%item = new item() {
+		dataBlock = HEGrenadeItem;
+		sourceObject = %obj;
+		client = %obj.client;
+		lastActivated = %obj.lastActivated;
+	};
+	%item.setTransform(%obj.getTransform());
+	%item.setVelocity(%obj.getVelocity());
+	if(%item.lastActivated !$= "") {
+		%item.hideNode("ring");
+		schedule(mClamp(((HEGrenadeItem.grenadeLifeTime/1000) - ($Sim::Time - %item.lastActivated)) * 1000, 0, HEGrenadeItem.grenadeLifeTime), 0, HEGrenadeBlowUp, %item);
+		return;
+	}
+	%item.schedule(14000, fadeOut);
+	%item.schedule(15000, delete);
 }
 
 function HEGrenadeProjectile::onExplode(%this, %obj) {
 	if(%obj.noExplode) {
-		%item = new item() {
-			dataBlock = HEGrenadeItem;
-			sourceObject = %obj;
-			client = %obj.client;
-		};
-		%item.setTransform(%obj.getTransform());
-		%item.setVelocity(%obj.getVelocity());
-		%item.schedule(14000, fadeOut);
-		%item.schedule(15000, delete);
+		%this.MakeItem(%obj);
 		return;
 	}
 	%projectile = new projectile() {
@@ -334,6 +359,7 @@ function HEGrenadeProjectile::onExplode(%this, %obj) {
 		initialPosition = %obj.getPosition();
 		initialVelocity = %obj.getVelocity();
 		sourceObject = %obj;
+		client = %obj.client;
 	};
 	MissionCleanup.add(%projectile);
 	%projectile.explode();
@@ -351,10 +377,10 @@ function Player::HEGrenadeBlowUp(%obj) {
 	serverCmdUnUseTool(%obj.client);
 	%projectile = new projectile() {
 		dataBlock = HEExplosionProjectile;
-		initialPosition = %obj.getHackPosition();
+		initialPosition = vectorAdd(%obj.getPosition(), "0 0 2");
 		initialVelocity = %obj.getVelocity();
 		sourceObject = %obj;
-		client = %obj.client;
+		client = %obj.liveGrenadeClient !$= "" ? %obj.liveGrenadeClient : %obj.client;
 	};
 	MissionCleanup.add(%projectile);
 	%projectile.explode();
@@ -367,6 +393,7 @@ function HEGrenadeBlowUp(%obj) {
 			initialPosition = %obj.getPosition();
 			initialVelocity = %obj.getVelocity();
 			sourceObject = %obj;
+			client = %obj.client;
 		};
 		MissionCleanup.add(%projectile);
 		%projectile.explode();
@@ -378,11 +405,17 @@ package HEGrenadePackage {
 	function Armor::onTrigger(%this, %obj, %slot, %val)
 	{
 		%image = %obj.getMountedImage(0);
-		if(%image == nameToID(HEGrenadeImage) && %slot $= 4 && %val) {
-			if(%obj.getImageState(0) $= "Ready") {
-				%obj.playThread(2, "shiftRight");
-				%obj.playAudio(2,HEGrenadePinOutSound);
-				%obj.setImageLoaded(0, 0); //Shit's live, throw it or die!
+		if(%image == nameToID(HEGrenadeImage) && %slot $= 4) {
+			if(%val) {
+				if(%obj.getImageState(0) $= "Ready") {
+					%obj.playThread(2, "shiftRight");
+					%obj.playAudio(2,HEGrenadePinOutSound);
+					%obj.setImageLoaded(0, 0); //IT BEGINS.
+				}
+			}
+			else if(%obj.getImageLoaded(0) == 0) {
+				%obj.playThread(3, "shiftLeft");
+				%obj.playAudio(2, HEGrenadeClickSound);
 				%obj.HEGrenadeStarted = $Sim::Time;
 				%obj.liveGrenadeSlot = %obj.currTool;
 				%obj.HEGrenadeSchedule = %obj.schedule(%image.item.grenadeLifeTime, HEGrenadeBlowUp);
@@ -397,16 +430,35 @@ package HEGrenadePackage {
 				%slot = %obj.liveGrenadeSlot;
 			}
 			%item = %obj.tool[%slot];
-
 			if ( nameToID(HEGrenadeItem) == %item && %obj.HEGrenadeStarted !$= "") {
-				$HEGrenadeDropInfo = %obj.HEGrenadeStarted;
+				$HEGrenadeDropInfo = %obj.HEGrenadeStarted SPC %client;
 				%obj.HEGrenadeStarted = "";
 				%obj.liveGrenadeSlot = "";
+				%obj.liveGrenadeClient = "";
 				%obj.setImageLoaded(0, 1);
 				cancel(%obj.HEGrenadeSchedule);
 			}
 		}
 		parent::serverCmdDropTool(%client, %slot);
+	}
+
+	function Armor::onCollision(%this, %obj, %col, %a, %b, %c, %d, %e, %f) {
+		%db = %col.getDatablock();
+		%client = %obj.client;
+		if ( nameToID(HEGrenadeItem) == %db && %col.canPickup && %col.lastActivated !$= "") {
+			if ( miniGameCanDamage(%col,%obj) == 1 ) {
+				%newslot = %obj.addItem(HEGrenadeItem.getID());
+				%obj.HEGrenadeStarted = %col.lastActivated;
+				%obj.liveGrenadeSlot = %newslot;
+				%obj.liveGrenadeClient = %col.client;
+				serverCmdUseTool(%client, %newslot);
+				%obj.HEGrenadeSchedule = %obj.schedule(mClamp(((%db.grenadeLifeTime/1000) - ($Sim::Time - %obj.HEGrenadeStarted)) * 1000, 0, %db.grenadeLifeTime), HEGrenadeBlowUp);
+				%obj.setImageLoaded(0, 0);
+				%col.delete();
+			}
+			return;
+		}
+		Parent::onCollision(%this, %obj, %col, %a, %b, %c, %d, %e, %f);
 	}
 
 	function Player::pickUp(%obj, %item) {
@@ -416,6 +468,7 @@ package HEGrenadePackage {
 			%newslot = %obj.addItem(HEGrenadeItem.getID());
 			%obj.HEGrenadeStarted = %item.lastActivated;
 			%obj.liveGrenadeSlot = %newslot;
+			%obj.liveGrenadeClient = %item.client;
 			serverCmdUseTool(%client, %newslot);
 			%obj.HEGrenadeSchedule = %obj.schedule(mClamp(((%db.grenadeLifeTime/1000) - ($Sim::Time - %obj.HEGrenadeStarted)) * 1000, 0, %db.grenadeLifeTime), HEGrenadeBlowUp);
 			%obj.setImageLoaded(0, 0);
@@ -431,7 +484,8 @@ package HEGrenadePackage {
 		
 		if ( %this == nameToID(HEGrenadeItem) && $HEGrenadeDropInfo !$= "" ) {
 			%obj.hideNode("ring");
-			%obj.lastActivated = $HEGrenadeDropInfo;
+			%obj.lastActivated = getWord($HEGrenadeDropInfo, 0);
+			%obj.client = getWord($HEGrenadeDropInfo, 1);
 			schedule(mClamp(((%this.grenadeLifeTime/1000) - ($Sim::Time - $HEGrenadeDropInfo)) * 1000, 0, %this.grenadeLifeTime), 0, HEGrenadeBlowUp, %obj);
 
 			$HEGrenadeDropInfo = "";
@@ -452,18 +506,6 @@ package HEGrenadePackage {
 			return;
 		}
 		parent::serverCmdUnuseTool(%client, %slot);
-	}
-
-	function HEGrenadeProjectile::radiusDamage(%this, %obj, %col, %factor, %pos, %damage) {
-		if (obstructRadiusDamageCheck(%pos, %col)) {
-			Parent::radiusDamage(%this, %obj, %col, %factor, %pos, %damage);
-		}
-	}
-
-	function HEGrenadeProjectile::radiusImpulse(%this, %obj, %col, %factor, %pos, %force) {
-		if (obstructRadiusDamageCheck(%pos, %col)) {
-			Parent::radiusImpulse(%this, %obj, %col, %factor, %pos, %force);
-		}
 	}
 };
 

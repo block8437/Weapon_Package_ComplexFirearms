@@ -98,6 +98,8 @@ datablock ItemData(ColtPistolItem) {
 	 // Dynamic properties defined by the scripts
 	image = ColtPistolImage;
 	canDrop = true;
+
+	clickPickUp = true;
 };
 
 ////////////////

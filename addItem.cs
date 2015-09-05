@@ -18,25 +18,35 @@ function Player::addItem(%player,%image)
 	return %slot;
 }
 
+function Player::findItem(%this,%item) //Returns the item slot
+{
+	for(%i=0;%i<%this.getDatablock().maxTools;%i++)
+	{
+		if(isObject(%this.tool[%i]))
+		{
+			%tool=%this.tool[%i].getID();
+			if(%tool==%item.getID())
+			{
+				return %i;
+			}
+		}
+	}
+	return -1;
+}
+
 function Player::removeItem(%this,%item)
 {
 	if(!isObject(%this) || !isObject(%item.getID()))
 		return;
-	for(%i=0;%i<%this.getDatablock().maxTools;%i++)
+	%i = findItem(%this,%item);
+	if(%i >= 0)
 	{
-		  if(isObject(%this.tool[%i]))
-		  {
-			%tool=%this.tool[%i].getID();
-			if(%tool==%item.getID())
-			{
-				%this.tool[%i]=0;
-				messageClient(%this.client,'MsgItemPickup','',%i, 0, 1);
-				if(%this.currTool==%i)
-				{
-					%this.updateArm(0);
-					%this.unMountImage(0);
-				}
-			}
+		%this.tool[%i]=0;
+		messageClient(%this.client,'MsgItemPickup','',%i, 0, 1);
+		if(%this.currTool==%i)
+		{
+			%this.updateArm(0);
+			%this.unMountImage(0);
 		}
 	}
 }

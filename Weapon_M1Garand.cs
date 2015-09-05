@@ -98,6 +98,8 @@ datablock ItemData(garandRifleItem) {
 	 // Dynamic properties defined by the scripts
 	image = garandRifleImage;
 	canDrop = true;
+
+	clickPickUp = true;
 };
 
 ////////////////
