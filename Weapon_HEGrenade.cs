@@ -556,17 +556,17 @@ package HEGrenadePackage {
 
 	function serverCmdUseTool(%client, %slot) {
 		%obj = %client.player;
-		// if(isObject(%obj) && %obj.getMountedImage(0) == nameToID(HEGrenadeImage) && %obj.getImageLoaded(0) == 0) {
-		// 	return;
-		// }
+		if(isObject(%obj) && %obj.getMountedImage(0) == nameToID(HEGrenadeImage) && %obj.getImageLoaded(0) == 0) {
+			return;
+		}
 		parent::serverCmdUseTool(%client, %slot);
 	}
 
 	function serverCmdUnuseTool(%client, %slot) {
 		%obj = %client.player;
-		// if(isObject(%obj) && %obj.getMountedImage(0) == nameToID(HEGrenadeImage) && %obj.getImageLoaded(0) == 0) {
-		// 	return;
-		// }
+		if(isObject(%obj) && %obj.getMountedImage(0) == nameToID(HEGrenadeImage) && %obj.getImageLoaded(0) == 0) {
+			return;
+		}
 		parent::serverCmdUnuseTool(%client, %slot);
 	}
 };
