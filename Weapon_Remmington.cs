@@ -119,7 +119,7 @@ datablock ShapeBaseImageData(RemmingtonShotgunImage) {
 	timedCustomFire = true;
 	fireSpeed = cf_muzzlevelocity_ms(472.44);
 	fireGravity = "0 0" SPC cf_bulletdrop_grams(25);
-	fireLifetime = 5;
+	fireLifetime = 1;
 	velInheritFactor = 0.75;
 	projectile = RemmingtonShotgunProjectile;
 	projectileCount = 8;

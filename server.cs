@@ -14,6 +14,7 @@ exec("./lib/lag-compensation.cs");
 exec("./lib/timed-raycast.cs");
 exec("./lib/timed-custom-fire.cs");
 exec("./lib/player-hit-region.cs");
+exec("./debug/init.cs");
 // exec("./customFire.cs");
 exec("./calculations.cs");
 exec("./adventure_Effects.cs");

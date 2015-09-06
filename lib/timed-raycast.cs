@@ -21,36 +21,49 @@
 
 function TimedRayCast::onAdd(%this)
 {
-    if (%this.tickInterval $= "")
-        %this.tickInterval = 16;
+	if (%this.tickInterval $= "")
+		%this.tickInterval = 16;
 }
 
 function TimedRayCast::onCollision(%this, %col, %position, %normal)
 {
-    return false;
+	return false;
 }
 
 function TimedRayCast::onMiss(%this)
 {
+
 }
 
 function TimedRayCast::onStart(%this)
 {
-    %this.pathTracer = createShape(CylinderGlowShapeData, "1 1 1 0.9");
+	// %this.emitter = new ParticleEmitterNode() {
+	// 	datablock = GenericEmitterNode;
+	// 	emitter = brickTrailEmitter;
+	// 	position = %this.position;
+	// 	rotation = "1 0 0 0";
+	// 	scale = "0.1 0.1 0.1";
+	// 	velocity = 1;
+	// };
+	%this.pathTracer = createShape(BulletShapeData, "1 1 0.5 1");
+	%a = %this.position;
+	%b = vectorAdd(%a, vectorScale(%this.velocity, %this.tickInterval / 1000));
+	%this.pathTracer.transformLine(%a, %b, 0.5);
 }
 
 function TimedRayCast::onEnd(%this)
 {
-    if (isObject(%this.pathTracer))
-        %this.pathTracer.schedule(500, "delete");
-
-    %this.delete();
+	if (isObject(%this.pathTracer))
+		%this.pathTracer.delete();//schedule(500, "delete");
+	// if (isObject(%this.emitter))
+	// 	%this.emitter.delete();
+	%this.delete();
 }
 
 function TimedRayCast::fire(%this)
 {
-    %this.onStart();
-    %this.step(0, $Sim::Time);
+	%this.onStart();
+	%this.step(0, $Sim::Time);
 }
 
 $color0 = "1 0 0";
@@ -62,96 +75,97 @@ $color5 = "1 0 1";
 
 function TimedRayCast::step(%this, %i, %prevTime)
 {
-    %dt = $Sim::Time - %prevTime;
+	%dt = $Sim::Time - %prevTime;
+	%a = %this.position;
+	%b = vectorAdd(%a, vectorScale(%this.velocity, %dt));
 
-    %a = %this.position;
-    %b = vectorAdd(%a, vectorScale(%this.velocity, %dt));
+	if (isObject(%this.pathTracer) && %dt != 0)
+		%this.pathTracer.transformLine(%a, %b, 0.5);
 
-    if (isObject(%this.pathTracer))
-        %this.pathTracer.transformLine(%a, %b, 0.01);
+	// %shape = createShape(CylinderGlowShapeData, $color[%i % 6] SPC 1, 2000);
+	// %shape.transformLine(%a, %b, 0.1);
 
-    // %shape = createShape(CylinderGlowShapeData, $color[%i % 6] SPC 1, 2000);
-    // %shape.transformLine(%a, %b, 0.1);
+	%this.position = %b;
+	%this.velocity = vectorAdd(%this.velocity, vectorScale(%this.gravity, %dt));
+	// %this.emitter.setTransform(%this.position SPC eulerToAxis("90 0 0"));
+	// %this.emitter.inspectPostApply();
+	// %this.velocity = vectorAdd(%this.velocity, vectorScale(mSin($Sim::Time * 16) SPC 0 SPC mCos($Sim::Time * 16), 4000 * %dt));
 
-    %this.position = %b;
-    %this.velocity = vectorAdd(%this.velocity, vectorScale(%this.gravity, %dt));
-    // %this.velocity = vectorAdd(%this.velocity, vectorScale(mSin($Sim::Time * 16) SPC 0 SPC mCos($Sim::Time * 16), 4000 * %dt));
+	// initContainerRadiusSearch(%this.position, 64, $TypeMasks::PlayerObjectType);
+	//
+	// while (isObject(%find = containerSearchNext()))
+	// {
+	//     if (%find == %this.exempt)
+	//         continue;
+	//
+	//     %this.velocity = vectorAdd(%this.velocity, vectorSub(%find.getHackPosition(), %this.position));
+	//     break;
+	// }
 
-    // initContainerRadiusSearch(%this.position, 64, $TypeMasks::PlayerObjectType);
-    //
-    // while (isObject(%find = containerSearchNext()))
-    // {
-    //     if (%find == %this.exempt)
-    //         continue;
-    //
-    //     %this.velocity = vectorAdd(%this.velocity, vectorSub(%find.getHackPosition(), %this.position));
-    //     break;
-    // }
+	if (isObject(LagComp) && isObject(%this.sourceClient))
+		%entered = LagComp.enterClient(%this.sourceClient);
 
-    if (isObject(LagComp) && isObject(%this.sourceClient))
-        %entered = LagComp.enterClient(%this.sourceClient);
+	%result = containerRayCast(%a, %b, %this.mask,
+		%this.exempt, %this.exempt2, %this.exempt3,
+		%this.exempt4, %this.exempt5, %this.exempt6);
 
-    %result = containerRayCast(%a, %b, %this.mask,
-        %this.exempt, %this.exempt2, %this.exempt3,
-        %this.exempt4, %this.exempt5, %this.exempt6);
+	if (%entered)
+		LagComp.exit(%entered);
 
-    if (%entered)
-        LagComp.exit(%entered);
+	%hitObj = getWord(%result, 0);
+	%hitPos = getWords(%result, 1, 3);
+	%hitVec = getWords(%result, 4, 6);
 
-    %hitObj = getWord(%result, 0);
-    %hitPos = getWords(%result, 1, 3);
-    %hitVec = getWords(%result, 4, 6);
+	if (%result && !%this.onCollision(%hitObj, %hitPos, %hitVec))
+	{
+		%this.onEnd();
+		return;
+	}
 
-    if (%result && !%this.onCollision(%hitObj, %hitPos, %hitVec))
-    {
-        %this.onEnd();
-        return;
-    }
+	%this.lifetime -= %dt;
 
-    %this.lifetime -= %dt;
+	if (%this.lifetime <= 0)
+	{
+		%this.onMiss();
+		%this.onEnd();
+		return;
+	}
 
-    if (%this.lifetime <= 0)
-    {
-        %this.onMiss();
-        %this.onEnd();
-        return;
-    }
-
-    %this.schedule(%this.tickInterval, "step", %i + 1, $Sim::Time);
+	%this.schedule(%this.tickInterval, "step", %i + 1, $Sim::Time);
 }
 
 function ProjectileRayCast::onCollision(%this, %col, %position, %normal)
 {
-    if (isObject(%this.hitExplosion))
-    {
-        %projectile = new Projectile()
-        {
-            datablock = %this.hitExplosion;
-            initialPosition = %position;
-            initialVelocity = "0 0 0";
-        };
+	if (isObject(%this.hitExplosion))
+	{
+		%projectile = new Projectile()
+		{
+			datablock = %this.hitExplosion;
+			initialPosition = %position;
+			initialVelocity = "0 0 0";
+		};
 
-        MissionCleanup.add(%projectile);
-        %projectile.explode();
-    }
+		MissionCleanup.add(%projectile);
+		%projectile.explode();
+	}
 
-    if (isObject(%this.hitSound))
-        serverPlay3D(%this.hitSound, %position);
+	if (isObject(%this.hitSound))
+		serverPlay3D(%this.hitSound, %position);
 
-    if (isObject(%this.hitDecal))
-        %doNothing = 1;
-        // spawnDecal(...);
+	if (isObject(%this.hitDecal))
+		%doNothing = 1;
+		// spawnDecal(...);
 
-    if (%col.getType() & ($TypeMasks::PlayerObjectType | $TypeMasks::VehicleObjectType))
-    {
-        if (miniGameCanDamage(%this.sourceClient, %col) == 1)
-        {
-            if (isObject(%this.damageRef) && isFunction(%this.damageRef.getName(), "damage"))
-                %this.damageRef.damage(%this.sourceObject, %col, %position, %normal);
-            else
-                %col.damage(%this.sourceObject, %position, %this.damage, %this.damageType);
-        }
-    }
+	if (%col.getType() & ($TypeMasks::PlayerObjectType | $TypeMasks::VehicleObjectType))
+	{
+		if (miniGameCanDamage(%this.sourceClient, %col) == 1)
+		{
+			if (isObject(%this.damageRef) && isFunction(%this.damageRef.getName(), "damage"))
+				%this.damageRef.damage(%this.sourceObject, %col, %position, %normal);
+			else
+				%col.damage(%this.sourceObject, %position, %this.damage, %this.damageType);
+		}
+	}
 
-    return false;
+	return false;
 }

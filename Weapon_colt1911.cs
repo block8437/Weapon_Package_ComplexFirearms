@@ -128,7 +128,7 @@ datablock ShapeBaseImageData(ColtPistolImage) {
 	timedCustomFire = true;
 	fireSpeed = cf_muzzlevelocity_ms(251);
 	fireGravity = "0 0" SPC cf_bulletdrop_grams(15);
-	fireLifetime = 3;
+	fireLifetime = 2;
 	velInheritFactor = 0.25;
 	projectile = ColtPistolProjectile;
 

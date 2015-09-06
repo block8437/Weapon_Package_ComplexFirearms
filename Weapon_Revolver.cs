@@ -158,7 +158,7 @@ datablock ShapeBaseImageData(revolverImage)
 	timedCustomFire = true;
 	fireSpeed = cf_muzzlevelocity_ms(396.24);
 	fireGravity = "0 0" SPC cf_bulletdrop_grams(10);
-	fireLifetime = 5;
+	fireLifetime = 2.5;
 	velInheritFactor = 0.25;
 	projectile = revolverProjectile;
 

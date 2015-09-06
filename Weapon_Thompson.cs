@@ -143,7 +143,7 @@ datablock ShapeBaseImageData(thompsonRifleImage) {
 	timedCustomFire = true;
 	fireSpeed = cf_muzzlevelocity_ms(285);
 	fireGravity = "0 0" SPC cf_bulletdrop_grams(15);
-	fireLifetime = 5;
+	fireLifetime = 1;
 	velInheritFactor = 0.6;
 	projectile = thompsonRifleProjectile;
 
@@ -423,7 +423,7 @@ function thompsonRifleImage::damage(%this, %obj, %col, %pos, %normal) {
 	%damageType = %this.directDamageType;
 	%damage = %this.directDamage;
 	
-	if (%col.isCrouched() || %col.getRegion(%pos, true) $= "head")
+	if (%col.isCrouched() || %col.getRegion(%pos, true) $= "head") {
 		if ( %col.isCrouched() ) {
 			%damage = %damage/2;
 		}

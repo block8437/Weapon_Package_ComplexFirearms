@@ -134,7 +134,7 @@ datablock ShapeBaseImageData(garandRifleImage) {
 	timedCustomFire = true;
 	fireSpeed = cf_muzzlevelocity_ms(853);
 	fireGravity = "0 0" SPC cf_bulletdrop_grams(150);
-	fireLifetime = 5;
+	fireLifetime = 3.5;
 	velInheritFactor = 0.5;
 	projectile = garandRifleProjectile;
 
