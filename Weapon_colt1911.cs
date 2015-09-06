@@ -41,11 +41,6 @@ AddDamageType("ColtPistolHeadshot",
 	'<bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_colt><bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_headshot> %1',
 	'%2 <bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_colt><bitmap:add-ons/Weapon_Package_ComplexFirearms/shapes/weapons/icons/ci_headshot> %1',0.2,1);
 datablock ProjectileData(ColtPistolProjectile : gunProjectile) {
-	directDamageType	= $DamageType::ColtPistol;
-	radiusDamageType	= $DamageType::ColtPistol;
-	headshotDamageType	= $DamageType::ColtPistolHeadshot;
-	directDamage        = 16;
-
 	impactImpulse       = 100;
 	verticalImpulse     = 50;
 
@@ -61,7 +56,6 @@ datablock ProjectileData(ColtPistolProjectile : gunProjectile) {
 	gravityMod = 0.0;
 
 	particleEmitter     = advSmallBulletTrailEmitter; //bulletTrailEmitter;
-	headshotMultiplier = 2;
 };
 
 //////////
@@ -130,9 +124,19 @@ datablock ShapeBaseImageData(ColtPistolImage) {
 	// Projectile && Ammo.
 	item = ColtPistolItem;
 	ammo = " ";
+
+	timedCustomFire = true;
+	fireSpeed = cf_muzzlevelocity_ms(251);
+	fireGravity = "0 0" SPC cf_bulletdrop_grams(15);
+	fireLifetime = 3;
+	velInheritFactor = 0.25;
 	projectile = ColtPistolProjectile;
-	projectileType = Projectile;
-	customProjectileFire = true;
+
+	directDamageType	= $DamageType::ColtPistol;
+	radiusDamageType	= $DamageType::ColtPistol;
+	headshotDamageType	= $DamageType::ColtPistolHeadshot;
+	directDamage        = 16;
+	headshotMultiplier = 2;
 
 	casing = gunShellDebris;
 	shellExitDir        = "1.0 -1.3 1.0";
@@ -394,27 +398,27 @@ function ColtPistolImage::onFire(%this, %obj, %slot) {
 	}
 }
 
-function ColtPistolProjectile::damage(%this, %obj, %col, %fade, %pos, %normal) {
+function ColtPistolImage::damage(%this, %obj, %col, %pos, %normal)
+{
 	%damageType = %this.directDamageType;
 	%damage = %this.directDamage;
-	%scale = getWord(%col.getScale(), 2);
 
-	if ( %col.isCrouched() || (getword(%pos, 2) > getword(%col.getWorldBoxCenter(), 2) - 3.4 * %scale) ) {
-		if ( %col.isCrouched() ) {
-			%damage = %damage/2;
-		}
+	if (%col.isCrouched() || %col.getRegion(%pos, true) $= "head")
+	{
+		if (%col.isCrouched())
+			%damage /= 2;
+
 		%damage *= %this.headshotMultiplier;
-		%headshot = true;
-		if ( %this.headshotDamageType !$= "" ) {
+		%headshot = 1;
+
+		if (%this.headshotDamageType !$= "")
 			%damageType = %this.headshotDamageType;
-		}
 	}
 
-	if(%col.getDamageLevel() + %damage >= %col.getDatablock().maxDamage && %headshot) {
+	if(%col.getDamageLevel() + %damage >= %col.getDatablock().maxDamage && %headshot)
 		%col.isDying = true;
-	}
 
-	%col.damage( %obj, %pos, %damage, %damageType );
+	%col.damage(%obj, %pos, %damage, %damageType);
 }
 
 package ColtPistolPackage {

@@ -67,17 +67,8 @@ AddDamageType("SnWRevolverHeadshot",
 //muzzle flash effects
 datablock ProjectileData(revolverProjectile : gunProjectile)
 {
-	directDamage        = 25;//8;
-
-	directDamageType	= $DamageType::SnWRevolver;
-	radiusDamageType	= $DamageType::SnWRevolver;
-	headshotDamageType	= $DamageType::SnWRevolverHeadshot;
-
 	impactImpulse       = 300;
 	verticalImpulse     = 250;
-
-	muzzleVelocity      = 200;
-	velInheritFactor    = 0.25;
 
 	armingDelay         = 00;
 	lifetime            = 4000;
@@ -88,7 +79,6 @@ datablock ProjectileData(revolverProjectile : gunProjectile)
 	gravityMod = 0.0;
 
 	particleEmitter     = advSmallBulletTrailEmitter; //bulletTrailEmitter;
-	headshotMultiplier = 3;
 
 	uiName = "357 Bullet";
 };
@@ -164,6 +154,19 @@ datablock ShapeBaseImageData(revolverImage)
 	projectile = revolverProjectile;
 	projectileType = Projectile;
 	customProjectileFire = true;
+
+	timedCustomFire = true;
+	fireSpeed = cf_muzzlevelocity_ms(396.24);
+	fireGravity = "0 0" SPC cf_bulletdrop_grams(10);
+	fireLifetime = 5;
+	velInheritFactor = 0.25;
+	projectile = revolverProjectile;
+
+	directDamage        = 25;//8;
+	directDamageType	= $DamageType::SnWRevolver;
+	radiusDamageType	= $DamageType::SnWRevolver;
+	headshotDamageType	= $DamageType::SnWRevolverHeadshot;
+	headshotMultiplier = 3;
 
 	casing = gunShellDebris;
 	shellExitDir        = "1.0 -1.3 1.0";
@@ -311,11 +314,11 @@ function revolverImage::onMount(%this, %obj, %slot)
 	if(%obj.currRevolverSlot $= "")
 		%obj.currRevolverSlot = 0;
 	if(%obj.bullets["357"] $= "")
-		%obj.bullets["357"] = getRandom(0, 16);
+		%obj.bullets["357"] = 18;
 	for(%i = 0; %i <= 5; %i++)
 	{
 		if(%obj.revolverBullet[%i] $= "")
-			%obj.revolverBullet[%i] = getRandom(0, 1) * 2;
+			%obj.revolverBullet[%i] = 0;
 	}
 }
 
@@ -493,12 +496,12 @@ function revolverImage::CloseBarrel(%this, %obj, %slot)
 	%this.ammoItem.UpdateAmmoPrint(%obj, %slot, -1);
 }
 
-function revolverProjectile::damage(%this, %obj, %col, %fade, %pos, %normal) {
+function revolverImage::damage(%this, %obj, %col, %pos, %normal) {
 	%damageType = %this.directDamageType;
 	%damage = %this.directDamage;
-	%scale = getWord(%col.getScale(), 2);
-
-	if ( %col.isCrouched() || (getword(%pos, 2) > getword(%col.getWorldBoxCenter(), 2) - 3.4 * %scale) ) {
+	
+	if (%col.isCrouched() || %col.getRegion(%pos, true) $= "head")
+	{
 		if ( %col.isCrouched() ) {
 			%damage = %damage/2;
 		}

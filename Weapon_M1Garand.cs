@@ -130,9 +130,19 @@ datablock ShapeBaseImageData(garandRifleImage) {
 	// Projectile && Ammo.
 	item = garandRifleItem;
 	ammo = " ";
+
+	timedCustomFire = true;
+	fireSpeed = cf_muzzlevelocity_ms(853);
+	fireGravity = "0 0" SPC cf_bulletdrop_grams(150);
+	fireLifetime = 5;
+	velInheritFactor = 0.5;
 	projectile = garandRifleProjectile;
-	projectileType = Projectile;
-	customProjectileFire = true;
+
+	directDamageType	= $DamageType::GarandRifle;
+	radiusDamageType	= $DamageType::GarandRifle;
+	headshotDamageType	= $DamageType::GarandRifleHeadshot;
+	directDamage        = 30;//8;
+	headshotMultiplier = 3;
 
 	casing = gunShellDebris;
 	shellExitDir        = "1.0 -1.3 1.0";
@@ -404,12 +414,12 @@ function garandRifleImage::onFire(%this, %obj, %slot) {
 	}
 }
 
-function garandRifleProjectile::damage(%this, %obj, %col, %fade, %pos, %normal) {
+function garandRifleImage::damage(%this, %obj, %col, %pos, %normal) {
 	%damageType = %this.directDamageType;
 	%damage = %this.directDamage;
-	%scale = getWord(%col.getScale(), 2);
 
-	if ( %col.isCrouched() || (getword(%pos, 2) > getword(%col.getWorldBoxCenter(), 2) - 3.4 * %scale) ) {
+	if (%col.isCrouched() || %col.getRegion(%pos, true) $= "head")
+	{
 		if ( %col.isCrouched() ) {
 			%damage = %damage/2;
 		}

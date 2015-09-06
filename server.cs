@@ -1,57 +1,40 @@
-//we need the gun add-on for this, so force it to load
-%error = ForceRequiredAddOn("Weapon_Gun");
+%error = forceRequiredAddOn("Weapon_Gun");
 
-if(%error == $Error::AddOn_Disabled)
+if (%error == $Error::AddOn_Disabled)
 {
-	//A bit of a hack:
-	//  we just forced the gun to load, but the user had it disabled
-	//  so lets make it so they can't select it
 	GunItem.uiName = "";
 }
-
-if(%error == $Error::AddOn_NotFound)
+else if (%error == $Error::AddOn_NotFound)
 {
-	//we don't have the gun, so we're screwed
 	error("ERROR: Weapon_Package_ComplexFirearms - required add-on Weapon_Gun not found");
-}
-else
-{
-	exec("./customFire.cs");
-	exec("./adventure_Effects.cs");
-	exec("./adventure_Sounds.cs");
-	exec("./addItem.cs");
-	exec("./package.cs");
-	exec("./ammo.cs");
-	exec("./Weapon_Revolver.cs");
-	exec("./Weapon_Colt1911.cs");
-	exec("./Weapon_M1Garand.cs");
-	exec("./Weapon_Thompson.cs");
-	exec("./Weapon_Remmington.cs");
-	exec("./Weapon_HEGrenade.cs");
+	return;
 }
 
-function serverCmdReload(%c) {
-	if ( %c.isAdmin )
+exec("./lib/lag-compensation.cs");
+exec("./lib/timed-raycast.cs");
+exec("./lib/timed-custom-fire.cs");
+exec("./lib/player-hit-region.cs");
+// exec("./customFire.cs");
+exec("./calculations.cs");
+exec("./adventure_Effects.cs");
+exec("./adventure_Sounds.cs");
+exec("./addItem.cs");
+exec("./package.cs");
+exec("./ammo.cs");
+exec("./Weapon_Revolver.cs");
+exec("./Weapon_Colt1911.cs");
+exec("./Weapon_M1Garand.cs");
+exec("./Weapon_Thompson.cs");
+exec("./Weapon_Remmington.cs");
+exec("./Weapon_HEGrenade.cs");
+
+function serverCmdReload(%client)
+{
+	if (%client.isAdmin)
 		exec("./server.cs");
 }
 
-// datablock PlayerData(EmptyArmor : PlayerStandardArmor)
-// {
-// 	shapeFile = "base/data/shapes/empty.dts";
-// 	uiName = "EmptyArmor";
-// 	boundingBox = "1 1 1";
-// };
-
-// datablock PlayerData(RevolverArmor : PlayerStandardArmor)
-// {
-// 	shapeFile = "./shapes/weapons/revolver.dts";
-// 	renderFirstPerson = 1;
-// 	uiName = "RevolverArmor";
-// 	boundingBox = "1 1 1";
-// };
-
-
-//Axis stuff
+// Axis stuff
 function eulerToAxis(%euler)
 {
 	%euler = VectorScale(%euler,$pi / 180);

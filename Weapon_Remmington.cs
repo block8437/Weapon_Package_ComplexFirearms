@@ -115,10 +115,20 @@ datablock ShapeBaseImageData(RemmingtonShotgunImage) {
 	// Projectile && Ammo.
 	item = RemmingtonShotgunItem;
 	ammo = " ";
+
+	timedCustomFire = true;
+	fireSpeed = cf_muzzlevelocity_ms(472.44);
+	fireGravity = "0 0" SPC cf_bulletdrop_grams(25);
+	fireLifetime = 5;
+	velInheritFactor = 0.75;
 	projectile = RemmingtonShotgunProjectile;
-	projectileType = Projectile;
 	projectileCount = 8;
-	customProjectileFire = true;
+
+	directDamageType	= $DamageType::Remmington;
+	radiusDamageType	= $DamageType::Remmington;
+	// headshotDamageType	= $DamageType::RemmingtonHeadshot;
+	directDamage        = 9;
+	headshotMultiplier = 1;
 
 	casing = gunShellDebris;
 	shellExitDir        = "1.0 -1.3 1.0";
@@ -333,7 +343,7 @@ function RemmingtonShotgunImage::onFire(%this, %obj, %slot) {
 	serverPlay3d(RemmingtonShotgunFireSound, %obj.getHackPosition());
 
 }
-// 
+//
 // function RemmingtonShotgunProjectile::damage(%this, %obj, %col, %fade, %pos, %normal) {
 // 	%damage = %this.directDamage;
 // 	%scale = getWord(%col.getScale(), 2);
